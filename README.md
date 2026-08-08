@@ -8,29 +8,54 @@ avec des boutons d'action rapide.
 ## Fonctionnalités
 
 - **Détection automatique du site** : colle n'importe quel lien vinted.fr, leboncoin.fr ou
-  kleinanzeigen.de dans `/filtre ajouter`, le bot devine tout seul quelle API appeler.
-- **Ciblage flexible** : chaque filtre peut avoir son propre salon, être envoyé en DM, ou
-  utiliser un **salon unifié** commun à tous les filtres (`/parametres salon_unifie`).
-- **Activer / désactiver / relancer / supprimer** filtre par filtre ou en masse (tous les
-  filtres, ou tous ceux d'un site donné).
-- **Vitesse de scan** configurable en secondes/minutes/heures, par filtre.
-- **Heures creuses** : coupe automatiquement un filtre entre 2 horaires (`/filtre heures_creuses`).
-- **Plafond de crédits** global (`/parametres credits_max`) et par filtre
-  (`/filtre credits_max`) — le scan s'arrête tout seul une fois le plafond atteint.
-- **Anti-doublon** : ne renvoie jamais deux fois la même annonce (mémorisée en base).
-- **Filtrage prix min/max** et **mots-clés à inclure/exclure** côté bot, en plus des
-  filtres déjà appliqués dans l'URL.
-- **Ping de rôle** configurable par filtre.
+  kleinanzeigen.de dans le formulaire d'ajout, le bot devine tout seul quelle API appeler.
+- **Dashboard 100% par boutons, persistant** : `/dashboard` ouvre un panneau de contrôle
+  Discord avec navigation par écrans (Filtres, Destinations, Planification, Limitations,
+  Avancé). Tous les boutons et menus déroulants restent cliquables même après un
+  redémarrage du bot (l'état de chaque dashboard est stocké en base, pas en mémoire).
+- **Saisie de texte via formulaires** : dès qu'une valeur textuelle est nécessaire (lien,
+  intervalle, prix, mots-clés, heures creuses, plafonds...), le bot ouvre un vrai
+  **formulaire Discord** (modal) au lieu de te demander de taper une commande.
+- **Ciblage flexible** : chaque filtre peut avoir son propre salon (menu déroulant natif),
+  être envoyé en DM, ou utiliser un **salon unifié** commun à tous les filtres qui n'ont pas
+  de salon dédié — un filtre avec salon dédié garde toujours la priorité.
+- **Activer / désactiver / relancer / supprimer** filtre par filtre, ou en masse via un
+  écran d'action groupée (sélection multiple, application immédiate).
+- **Vitesse de scan** configurable par formulaire, filtre par filtre ou en masse.
+- **Heures creuses** : coupe automatiquement un filtre entre 2 horaires.
+- **Plafond de crédits** global et par filtre (ou en masse) — le scan s'arrête tout seul
+  une fois le plafond atteint.
+- **Anti-doublonnage toujours actif** : le bot ne renvoie jamais deux fois la même
+  annonce (mémorisée en base dès l'envoi). Ce n'est pas désactivable, pour éviter le spam.
+- **Filtrage prix min/max** et **mots-clés à inclure/exclure** côté bot.
+- **Ping de rôle** configurable par filtre (menu déroulant natif).
 - **Style d'affichage** compact ou détaillé par filtre.
 - **Salon de logs** avec alerte automatique quand le solde de crédits passe sous un seuil.
-- **Pause globale** (`/parametres pause`) pour tout couper d'un coup sans supprimer la config.
+- **Pause globale** pour tout couper d'un coup sans supprimer la config.
 - Respecte automatiquement les limites de débit documentées par l'API (30 req/min par clé,
   1 req/10s pour LeBonCoin, 60 req/60s pour Kleinanzeigen) grâce à un limiteur intégré,
   avec un léger jitter aléatoire sur chaque intervalle pour éviter les pics.
 
 > ℹ️ L'API ne fournit pas d'endpoint dédié pour consulter le solde de crédits en dehors
-> d'une recherche : `/credits` et le dashboard affichent donc le dernier solde `credits_remaining`
+> d'une recherche : le dashboard affiche donc le dernier solde `credits_remaining`
 > observé lors de la dernière recherche effectuée par n'importe quel filtre.
+
+## Utilisation
+
+Une seule commande à retenir : **`/dashboard`**. Tout le reste se fait par boutons, menus
+déroulants et formulaires depuis là :
+
+- **🏠 Accueil** → résumé (crédits, filtres actifs) + accès aux 5 sections
+- **🗂️ Filtres** → liste, ajout (formulaire), détail d'un filtre (activer/désactiver,
+  relancer, supprimer, style, réglages, heures creuses, plafond crédits, salon/rôle/DM),
+  et actions groupées (activer/désactiver/supprimer plusieurs filtres à la fois)
+- **🎯 Destinations** → salon unifié pour tous les filtres sans salon dédié
+- **⏱️ Planification** → intervalle par défaut, vitesse pour plusieurs filtres à la fois
+- **💳 Limitations** → plafond global, plafond par filtres, seuil d'alerte, salon de logs
+- **⚙️ Avancé** → pause globale, rappel sur l'anti-doublonnage (toujours actif)
+
+Des commandes slash classiques (`/filtre ...`, `/parametres ...`, `/credits`) restent
+disponibles en complément pour l'automatisation ou les habitués du clavier.
 
 ## Commandes
 
@@ -84,18 +109,20 @@ python main.py
 
 ```
 lebondeal-bot/
-├── main.py            # point d'entrée, chargement des cogs, sync des commandes
+├── main.py            # point d'entrée, chargement des cogs, sync des commandes, vues persistantes
 ├── config.py           # variables d'environnement + limites API
-├── database.py          # SQLite (filtres, réglages, dédoublonnage, crédits)
+├── database.py          # SQLite (filtres, réglages, dédoublonnage, crédits, état des dashboards)
 ├── api_client.py         # appels HTTP vers l'API LeBonDeal + normalisation des réponses
 ├── site_detect.py        # détection du site à partir de l'URL collée
 ├── ratelimiter.py        # limiteur de débit (global + par site)
 ├── scheduler.py          # boucle asyncio par filtre (scan, dédoublonnage, envoi)
-├── embeds.py            # construction des embeds Discord
+├── embeds.py            # construction des embeds Discord (annonces + accueil dashboard)
+├── parsing.py            # parsing des formulaires (intervalles, heures, nombres)
+├── views.py             # écrans du dashboard persistant : Views, Selects, Modals
 ├── cogs/
-│   ├── filters.py        # commandes /filtre
+│   ├── filters.py        # commandes /filtre (option clavier, en plus du dashboard)
 │   ├── settings.py        # commandes /parametres + /credits
-│   └── dashboard.py       # commande /dashboard (embed + boutons + menu)
+│   └── dashboard.py       # commande /dashboard (lance l'écran d'accueil)
 ├── requirements.txt
 ├── .env.example
 └── data/                # base SQLite créée automatiquement au démarrage

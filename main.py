@@ -6,6 +6,7 @@ from discord.ext import commands
 
 import config
 import scheduler
+import views
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 log = logging.getLogger("lebondeal-bot")
@@ -29,6 +30,14 @@ async def on_ready():
 async def setup_hook():
     for ext in EXTENSIONS:
         await bot.load_extension(ext)
+
+    # Enregistrement des vues persistantes du dashboard : indispensable pour que les boutons
+    # et menus déroulants restent cliquables après un redémarrage du bot (routage par custom_id).
+    views.init(bot)
+    for view in views.persistent_view_instances():
+        bot.add_view(view)
+    log.info("Vues persistantes du dashboard enregistrées.")
+
     if config.GUILD_ID:
         guild = discord.Object(id=config.GUILD_ID)
         bot.tree.copy_global_to(guild=guild)

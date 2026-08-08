@@ -62,6 +62,20 @@ CREATE TABLE IF NOT EXISTS credit_log (
     credits_remaining INTEGER,
     updated_at INTEGER
 );
+
+-- Un dashboard = un message Discord. On stocke l'écran affiché pour que les boutons
+-- restent fonctionnels même après un redémarrage du bot (routage par message_id).
+CREATE TABLE IF NOT EXISTS dashboard_state (
+    message_id INTEGER PRIMARY KEY,
+    guild_id INTEGER NOT NULL,
+    channel_id INTEGER NOT NULL,
+    screen TEXT NOT NULL DEFAULT 'home',
+    filter_id INTEGER,
+    pending_action TEXT,
+    pending_value TEXT,
+    return_screen TEXT,
+    updated_at INTEGER NOT NULL
+);
 """
 _conn.executescript(SCHEMA)
 _conn.commit()
@@ -218,3 +232,26 @@ async def add_credits_used(filter_id, guild_id, amount):
         return
     await _run(_q, "UPDATE filters SET credits_used = credits_used + ? WHERE id=?", (amount, filter_id), "all", True)
     await _run(_q, "UPDATE settings SET global_credits_used = global_credits_used + ? WHERE guild_id=?", (amount, guild_id), "all", True)
+
+
+# ---------- état des dashboards persistants ----------
+
+async def save_dashboard_state(message_id, guild_id, channel_id, screen, filter_id=None,
+                                pending_action=None, pending_value=None, return_screen=None):
+    await _run(
+        _q,
+        """INSERT INTO dashboard_state
+               (message_id, guild_id, channel_id, screen, filter_id, pending_action, pending_value, return_screen, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?)
+           ON CONFLICT(message_id) DO UPDATE SET
+               screen=excluded.screen, filter_id=excluded.filter_id,
+               pending_action=excluded.pending_action, pending_value=excluded.pending_value,
+               return_screen=excluded.return_screen, updated_at=excluded.updated_at""",
+        (message_id, guild_id, channel_id, screen, filter_id, pending_action, pending_value,
+         return_screen, int(time.time())),
+        "all", True,
+    )
+
+
+async def get_dashboard_state(message_id):
+    return await _run(_q, "SELECT * FROM dashboard_state WHERE message_id=?", (message_id,), "one")

@@ -136,7 +136,8 @@ async def _tick(filter_id: int):
     for item in items:
         if not item.get("id"):
             continue
-        if f["dedup"] and await db.has_sent(filter_id, item["id"]):
+        # Anti-doublonnage: toujours actif, non désactivable — évite de renvoyer 2x la même annonce.
+        if await db.has_sent(filter_id, item["id"]):
             continue
         if not _keyword_ok(item.get("title"), f["include_keywords"], f["exclude_keywords"]):
             continue
@@ -144,8 +145,7 @@ async def _tick(filter_id: int):
             continue
 
         await _send_item(f_row, f["site"], item)
-        if f["dedup"]:
-            await db.mark_sent(filter_id, item["id"])
+        await db.mark_sent(filter_id, item["id"])
 
     await db.update_filter(filter_id, last_run_at=int(time.time()), last_error=None)
 
